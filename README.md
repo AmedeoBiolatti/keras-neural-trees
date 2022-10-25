@@ -1,5 +1,8 @@
 # Keras-Neural-Trees
 
+Implementation of many tree-like models for **keras**.
+
+
 
 ### Interfaces to other libraries
 
@@ -12,4 +15,5 @@
 
 ### Papers implementations
 
-- [ ] **learning binary decision trees by argmin differentiation**
+- [x] *Learning Binary Decision Trees by Argmin Differentiation*
+- [ ] *Neural Oblivious Decision Ensemble*
