@@ -9,7 +9,7 @@ def g(a, q, reg_lambda: float):
     reg_part = keras.backend.sum(a ** 2, axis=0)
     sqr_part = (a - (q + 0.5)) ** 2 * keras.backend.cast_to_floatx(a <= q + 0.5)
     sqr_part = keras.backend.sum(sqr_part, axis=0)
-    return 0.5 * reg_lambda * reg_part + 0.5 * sqr_part
+    return 0.5 * (reg_lambda * reg_part + sqr_part)
 
 
 class LatentTree(keras.layers.Layer):
@@ -19,7 +19,11 @@ class LatentTree(keras.layers.Layer):
     https://arxiv.org/pdf/2010.04627.pdf
     """
 
-    def __init__(self, max_depth: int, reg_lambda: float = 0.0):
+    def __init__(self,
+                 max_depth: int,
+                 reg_lambda: float = 0.0,
+                 n_activation_candidates: int = 21
+                 ):
         super(LatentTree, self).__init__()
 
         self.reg_lambda: float = reg_lambda
@@ -44,6 +48,10 @@ class LatentTree(keras.layers.Layer):
         self.idx = keras.backend.eye(self.n_nodes)
 
         self.q_by_node = keras.backend.ones((1, self.n_nodes))
+
+        self.tol: float = 1e-8
+        self.inv_temp: float = 100.0
+        self.n_activation_candidates: int = n_activation_candidates
 
     def _q_compute(self, x):
         method = 0
@@ -97,7 +105,7 @@ class LatentTree(keras.layers.Layer):
     def call(self, x, *args, **kwargs):
         q_by_node = self._q_compute(x)
 
-        a_candidates = tf.linspace(0.0, 1.0, 21)
+        a_candidates = tf.linspace(0.0, 1.0, self.n_activation_candidates)
         a_candidates = keras.backend.reshape(a_candidates, (1, 1, -1))
         a_candidates_by_node = keras.backend.tile(a_candidates, (1, self.n_nodes, 1))
 
@@ -109,14 +117,14 @@ class LatentTree(keras.layers.Layer):
         for _ in range(self.n_nodes + 1):
             n2g = keras.backend.reshape(node2group, (self.n_nodes, self.n_nodes, 1))
             g_a_by_group = keras.backend.sum(n2g * g_a, 0)
-            a_by_group = keras.backend.sum(a_candidates_by_node[0] * keras.backend.softmax(-100. * g_a_by_group, axis=1), axis=1)
+            a_by_group = keras.backend.sum(a_candidates_by_node[0] * keras.backend.softmax(-self.inv_temp * g_a_by_group, axis=1), axis=1)
             a_by_node = keras.backend.reshape(a_by_group, (1, -1)) @ keras.backend.transpose(node2group)
             a_by_node = a_by_node[0]
 
             a_parent = keras.backend.sum(a_by_node * self.node_to_parent, 1)[1:]
             a_parent = keras.backend.concatenate([a_parent[:1] * 0.0 + 1.0, a_parent], 0)
             violations = a_by_node - a_parent
-            if keras.backend.max(violations) <= 1e-8:
+            if keras.backend.max(violations) <= self.tol:
 
                 t_max = keras.backend.argmax(violations)
                 if t_max > 0:
