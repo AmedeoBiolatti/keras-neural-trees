@@ -19,6 +19,7 @@ class NODELayer(keras.layers.Layer):
         self.units: int = units
         self.n_trees = n_trees
         self.depth = depth
+        # TODO : replace with oblivious trees
         self.s2l = binary_trees.split_to_node_descendants_matrix(self.depth, leaves_only=True).astype('float32')
         self.n_splits, self.n_leaves = self.s2l.shape
         self.s2l = keras.backend.reshape(self.s2l, (1, 1, self.n_splits, self.n_leaves))
@@ -36,15 +37,18 @@ class NODELayer(keras.layers.Layer):
         n_cols = input_shape[-1]
         self.F = self.add_weight(
             name="F",
-            shape=(1, n_cols, self.n_trees, self.n_splits)
+            shape=(1, n_cols, self.n_trees, self.n_splits),
+            initializer=keras.initializers.RandomUniform(0.0, 1.0)
         )
         self.b = self.add_weight(
             name="bias",
-            shape=(1, self.n_trees, self.n_splits)
+            shape=(1, self.n_trees, self.n_splits),
+            initializer=keras.initializers.RandomNormal(0.0, 0.1)
         )
         self.leaves_values = self.add_weight(
             name="leaves_values",
-            shape=(1, self.n_trees, self.n_leaves, self.units)
+            shape=(1, self.n_trees, self.n_leaves, self.units),
+            initializer=keras.initializers.VarianceScaling(scale=2.0, mode="fan_out")
         )
 
     def call(self, x, *args, **kwargs):
@@ -70,3 +74,29 @@ class NODELayer(keras.layers.Layer):
         return values
 
     pass
+
+
+class NODE(keras.layers.Layer):
+    def __init__(
+            self,
+            units: int = 1,
+            n_layers: int = 1,
+            n_trees_per_layer: int = 1,
+            depth: int = 4,
+            name=None
+    ):
+        super().__init__(name=name)
+        self.node_layers = [
+            NODELayer(units=units, n_trees=n_trees_per_layer, depth=depth) for _ in range(n_layers)
+        ]
+        pass
+
+    def call(self, x, *args, **kwargs):
+        z = x
+        out = 0.0
+        for node_layer in self.node_layers:
+            node_layer_out = node_layer(z, *args, **kwargs)
+            out = out + node_layer_out
+            z = keras.backend.concatenate([z, node_layer_out], axis=-1)
+
+        return out
