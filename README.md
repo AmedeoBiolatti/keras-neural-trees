@@ -16,4 +16,4 @@ Implementation of many tree-like models for **keras**.
 ### Papers implementations
 
 - [x] *Learning Binary Decision Trees by Argmin Differentiation*
-- [ ] *Neural Oblivious Decision Ensemble*
+- [x] *Neural Oblivious Decision Ensemble*
