@@ -9,7 +9,7 @@ def r_child_idx(i):
     return 2 * i + 2
 
 
-def split_to_node_descendants_matrix(max_depth: int, signed: bool = True):
+def split_to_node_descendants_matrix(max_depth: int, signed: bool = True, leaves_only: bool = False):
     """
     A matrix representing the 'descendant of' relationship, not necessarily direct
     If signed represent the left/right (-1/+1) descendants
@@ -37,5 +37,8 @@ def split_to_node_descendants_matrix(max_depth: int, signed: bool = True):
 
     if not signed:
         split_to_node_matrix = np.abs(split_to_node_matrix)
+
+    if leaves_only:
+        split_to_node_matrix = split_to_node_matrix[:, -(n_nodes - n_splits):]
 
     return split_to_node_matrix

@@ -17,7 +17,7 @@ y_test = _y_prepr.transform(y_test)
 
 model = keras.Sequential(
     [
-        NODE(units=1, n_layers=1, n_trees_per_layer=128, depth=4),
+        NODE(units=4, n_layers=4, n_trees_per_layer=32, depth=4, oblivious=True),
         keras.layers.Dense(1)
     ]
 )

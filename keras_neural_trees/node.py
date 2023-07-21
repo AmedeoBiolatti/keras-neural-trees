@@ -3,7 +3,8 @@
 import tensorflow as tf
 from tensorflow import keras
 
-from keras_neural_trees.tree_struct import binary_trees
+from keras_neural_trees.tree_struct import binary_trees_struct
+from keras_neural_trees.tree_struct import oblivious_trees_struct
 
 
 class NODELayer(keras.layers.Layer):
@@ -12,6 +13,7 @@ class NODELayer(keras.layers.Layer):
                  n_trees: int = 1,
                  depth: int = 4,
                  *,
+                 oblivious: bool = True,
                  return_by_tree: bool = False,
                  return_by_leaf: bool = False
                  ):
@@ -19,10 +21,12 @@ class NODELayer(keras.layers.Layer):
         self.units: int = units
         self.n_trees = n_trees
         self.depth = depth
-        # TODO : replace with oblivious trees
-        self.s2l = binary_trees.split_to_node_descendants_matrix(self.depth, leaves_only=True).astype('float32')
+        if oblivious:
+            self.s2l = oblivious_trees_struct.split_to_node_descendants_matrix(self.depth, leaves_only=True)
+        else:
+            self.s2l = binary_trees_struct.split_to_node_descendants_matrix(self.depth, leaves_only=True)
         self.n_splits, self.n_leaves = self.s2l.shape
-        self.s2l = keras.backend.reshape(self.s2l, (1, 1, self.n_splits, self.n_leaves))
+        self.s2l = keras.backend.reshape(self.s2l.astype('float32'), (1, 1, self.n_splits, self.n_leaves))
 
         self.F = None
         self.b = None
@@ -58,7 +62,7 @@ class NODELayer(keras.layers.Layer):
         q_by_split = keras.backend.sum(e * x_, axis=1) - self.b
 
         abs_s2l = keras.backend.abs(self.s2l)
-        q = keras.activations.sigmoid(keras.backend.expand_dims(q_by_split, -1) * self.s2l) * abs_s2l + 1 * (1 - abs_s2l)
+        q = keras.activations.sigmoid(keras.backend.expand_dims(q_by_split, -1) * self.s2l) * abs_s2l + (1 - abs_s2l)
         mask = keras.backend.expand_dims(keras.backend.prod(q, axis=2), axis=-1)
 
         axis = ()
@@ -83,11 +87,12 @@ class NODE(keras.layers.Layer):
             n_layers: int = 1,
             n_trees_per_layer: int = 1,
             depth: int = 4,
+            oblivious: bool = True,
             name=None
     ):
         super().__init__(name=name)
-        self.node_layers = [
-            NODELayer(units=units, n_trees=n_trees_per_layer, depth=depth) for _ in range(n_layers)
+        self.node_layers: list[NODELayer] = [
+            NODELayer(units=units, n_trees=n_trees_per_layer, depth=depth, oblivious=oblivious) for _ in range(n_layers)
         ]
         pass
 
@@ -98,5 +103,4 @@ class NODE(keras.layers.Layer):
             node_layer_out = node_layer(z, *args, **kwargs)
             out = out + node_layer_out
             z = keras.backend.concatenate([z, node_layer_out], axis=-1)
-
         return out
