@@ -1,6 +1,4 @@
 import numpy as np
-from tensorflow import keras
-
 import unittest
 
 from keras_neural_trees import latent_trees
@@ -10,7 +8,6 @@ class LatentTreeTestSuit(unittest.TestCase):
     depth: int = 4
 
     def setUp(self) -> None:
-        keras.backend.clear_session()
         self.tree = latent_trees.LatentTree(self.depth)
         self.x = np.zeros((100, 10))
 

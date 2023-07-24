@@ -1,6 +1,6 @@
 import openml
 from sklearn import model_selection, preprocessing
-from tensorflow import keras
+import keras_core as keras
 
 from keras_neural_trees.node import NODE
 
@@ -21,5 +21,5 @@ model = keras.Sequential(
         keras.layers.Dense(1)
     ]
 )
-model.compile(loss='mse', optimizer=keras.optimizers.Adam(1e-3))
+model.compile(loss='mse', optimizer=keras.optimizers.Adam(1e-3), jit_compile=True)
 model.fit(x, y, validation_data=(x_test, y_test), epochs=100, batch_size=256)

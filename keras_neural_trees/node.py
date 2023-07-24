@@ -1,7 +1,6 @@
 """Neural oblivious decision trees"""
 
-import tensorflow as tf
-from tensorflow import keras
+import keras_core as keras
 
 from keras_neural_trees.tree_struct import binary_trees_struct
 from keras_neural_trees.tree_struct import oblivious_trees_struct
@@ -26,7 +25,7 @@ class NODELayer(keras.layers.Layer):
         else:
             self.s2l = binary_trees_struct.split_to_node_descendants_matrix(self.depth, leaves_only=True)
         self.n_splits, self.n_leaves = self.s2l.shape
-        self.s2l = keras.backend.reshape(self.s2l.astype('float32'), (1, 1, self.n_splits, self.n_leaves))
+        self.s2l = keras.ops.reshape(self.s2l.astype('float32'), (1, 1, self.n_splits, self.n_leaves))
 
         self.F = None
         self.b = None
@@ -56,14 +55,14 @@ class NODELayer(keras.layers.Layer):
         )
 
     def call(self, x, *args, **kwargs):
-        x_ = keras.backend.expand_dims(keras.backend.expand_dims(x, axis=-1), axis=-1)
+        x_ = keras.ops.expand_dims(keras.ops.expand_dims(x, axis=-1), axis=-1)
 
         e = keras.activations.softmax(self.F, axis=1)
-        q_by_split = keras.backend.sum(e * x_, axis=1) - self.b
+        q_by_split = keras.ops.sum(e * x_, axis=1) - self.b
 
-        abs_s2l = keras.backend.abs(self.s2l)
-        q = keras.activations.sigmoid(keras.backend.expand_dims(q_by_split, -1) * self.s2l) * abs_s2l + (1 - abs_s2l)
-        mask = keras.backend.expand_dims(keras.backend.prod(q, axis=2), axis=-1)
+        abs_s2l = keras.ops.abs(self.s2l)
+        q = keras.activations.sigmoid(keras.ops.expand_dims(q_by_split, -1) * self.s2l) * abs_s2l + (1 - abs_s2l)
+        mask = keras.ops.expand_dims(keras.ops.prod(q, axis=2), axis=-1)
 
         axis = ()
         if not self.return_by_tree:
@@ -73,7 +72,7 @@ class NODELayer(keras.layers.Layer):
 
         values = mask * self.leaves_values
         if len(axis) > 0:
-            values = keras.backend.sum(values, axis=axis)
+            values = keras.ops.sum(values, axis=axis)
 
         return values
 
@@ -102,5 +101,5 @@ class NODE(keras.layers.Layer):
         for node_layer in self.node_layers:
             node_layer_out = node_layer(z, *args, **kwargs)
             out = out + node_layer_out
-            z = keras.backend.concatenate([z, node_layer_out], axis=-1)
+            z = keras.ops.concatenate([z, node_layer_out], axis=-1)
         return out
