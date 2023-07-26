@@ -21,7 +21,8 @@ class LatentTree(keras.layers.Layer):
     def __init__(self,
                  max_depth: int,
                  reg_lambda: float = 0.0,
-                 n_activation_candidates: int = 21
+                 n_activation_candidates: int = 21,
+                 method: int = 0
                  ):
         super(LatentTree, self).__init__()
 
@@ -52,8 +53,10 @@ class LatentTree(keras.layers.Layer):
         self.inv_temp: float = 100.0
         self.n_activation_candidates: int = n_activation_candidates
 
+        self.method: int = method
+
     def _q_compute(self, x):
-        method = 0
+        method = self.method
         if method == 0:
             q_by_split = self.q_layer(x)
             q_by_split = keras.ops.reshape(q_by_split, (-1, self.n_splits, 1))
